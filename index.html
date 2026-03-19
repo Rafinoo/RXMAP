@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAFINOOR - Premium Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --accent-color: #00d2ff;
+            --dark-bg: #1e1e2d;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --info-color: #0dcaf0;
+        }
+
+        body { background: #f0f4f8; font-family: 'Inter', sans-serif; color: #333; }
+
+        .app-header {
+            background: var(--dark-bg);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        #map-container { 
+            position: relative; 
+            width: 100%; 
+            height: 65vh; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border: 8px solid white;
+        }
+        #map { height: 100%; width: 100%; }
+
+        .map-search-box { 
+            position: absolute; top: 15px; left: 60px; z-index: 1000; 
+            width: 280px; background: rgba(255, 255, 255, 0.9); 
+            backdrop-filter: blur(10px); padding: 8px 15px; 
+            border-radius: 30px; border: 1px solid var(--primary-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex; align-items: center;
+        }
+        .map-search-box input { border: none; background: transparent; outline: none; width: 100%; font-size: 14px; }
+
+        .voice-btn {
+            border: none; background: transparent; cursor: pointer; 
+            font-size: 18px; transition: transform 0.2s;
+        }
+        .voice-btn:hover { transform: scale(1.2); }
+        .voice-active { color: #dc3545; animation: pulse 1.5s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .locate-btn { 
+            position: absolute; bottom: 30px; right: 20px; z-index: 1000; 
+            background: var(--primary-color); color: white; 
+            border: 4px solid white; width: 55px; height: 55px; 
+            border-radius: 50%; cursor: pointer; font-size: 24px;
+            transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4);
+        }
+        .locate-btn:hover { transform: scale(1.1); background: #0056b3; }
+
+        .data-card {
+            background: white; border-radius: 20px; padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05); margin-top: 20px;
+        }
+        .table-responsive { max-height: 500px; border-radius: 12px; }
+        .table thead { background: var(--primary-color); color: white; }
+
+        .highlighted-row { background-color: #fff3cd !important; border-left: 6px solid #ffc107 !important; }
+        .highlight-toggle-btn { cursor: pointer; border: none; background: none; font-size: 1.1rem; }
+        .btn-highlight-action { 
+            background: #ffc107; color: #000; font-weight: bold; border-radius: 8px; 
+            padding: 8px; text-decoration: none; display: block; width: 100%; border: none; margin-top: 5px; font-size: 12px;
+        }
+        .site-label-active { background: #dc3545 !important; border: 2px solid yellow !important; }
+
+        .leaflet-popup-content-wrapper { border-radius: 15px; padding: 5px; }
+        .popup-table { width: 100%; font-size: 13px; }
+        .popup-table b { color: var(--primary-color); }
+        .btn-nav { 
+            background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+            color: white !important; font-weight: bold; border-radius: 8px;
+            text-align: center; display: block; padding: 10px; text-decoration: none; margin-top: 10px;
+        }
+
+        .site-label { 
+            background: var(--primary-color); color: white; border: 2px solid white;
+            padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: bold;
+        }
+        .edit-icon { cursor: pointer; color: #ffc107; font-size: 18px; }
+        .delete-icon { cursor: pointer; color: #dc3545; font-size: 18px; }
+
+        .team-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            height: 100%;
+            border-top: 5px solid var(--primary-color);
+            display: flex;
+            flex-direction: column;
+        }
+        .team-card:hover { transform: translateY(-5px); }
+        .team-header {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 15px 15px 0 0;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .team-stats-bar {
+            background: #eef2f7;
+            padding: 8px 15px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: bold;
+        }
+        .stat-item { display: flex; align-items: center; gap: 4px; }
+        .stat-badge { padding: 2px 6px; border-radius: 4px; color: white; }
+        .bg-work { background-color: var(--success-color); }
+        .bg-move { background-color: var(--info-color); }
+        .bg-run { background-color: var(--warning-color); color: black; }
+
+        .team-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .team-list li {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f1f1f1;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .team-list li:last-child { border-bottom: none; }
+        
+        .card-row-top { display: flex; justify-content: space-between; align-items: center; }
+        .card-row-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+        
+        .site-link { cursor: pointer; color: var(--primary-color); text-decoration: none; font-weight: bold; }
+        .site-link:hover { text-decoration: underline; }
+        
+        .status-select {
+            font-size: 11px; padding: 2px 5px; border-radius: 4px;
+            border: 1px solid #ced4da; background-color: #f8f9fa; cursor: pointer;
+            width: 100px;
+        }
+        .highlight-btn-card {
+            font-size: 10px; padding: 2px 8px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer;
+        }
+        .h-on { background-color: #dc3545; color: white; }
+        .h-off { background-color: #e9ecef; color: #333; }
+
+        .action-btns-mini { display: flex; gap: 8px; align-items: center; }
+        .btn-mini { cursor: pointer; font-size: 14px; opacity: 0.7; transition: 0.2s; }
+        .btn-mini:hover { opacity: 1; }
+        
+        .custom-status-text {
+            display: block; font-size: 10px; color: #dc3545; font-style: italic; text-align: right; margin-top: 2px;
+        }
+        .team-rename-btn { cursor: pointer; font-size: 14px; color: #6c757d; margin-left: 5px; }
+        .team-rename-btn:hover { color: var(--primary-color); }
+    </style>
+</head>
+<body onload="initApp()">
+
+<div class="container-fluid px-md-4">
+    <header class="app-header d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="m-0 fw-bold">📡 RAFINOOR Site Map</h3>
+            <span class="badge bg-primary">AI Voice & Team Tracking</span>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-light btn-sm fw-bold rounded-pill px-3" href="https://rafinoo.github.io/Dashboard/" target="_blank">PG Smart Dashboard </a>
+            <button class="btn btn-light btn-sm fw-bold rounded-pill px-3" onclick="goFullScreen()">🗖 Expand Map</button>
+            <button class="btn btn-outline-light btn-sm fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#adminModal">🛡️ Admin Panel</button>
+        </div>
+    </header>
+
+    <div id="map-container">
+        <div class="map-search-box">
+            <input type="text" id="mapSearchInput" placeholder="🔍 Say or Type Site ID..." onkeyup="syncSearch(this.value)">
+            <button class="voice-btn" id="voiceBtn" onclick="startVoiceRecognition()" title="Voice Search">🎙️</button>
+        </div>
+        <button class="locate-btn" onclick="locateUser()">📍</button>
+        <div id="map"></div>
+    </div>
+
+    <div class="row mt-4 g-3 align-items-center">
+        <div class="col-md-6">
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white border-end-0 rounded-start-pill px-3">🔍</span>
+                <input type="text" id="mainSearchInput" class="form-control border-start-0 rounded-end-pill py-2" placeholder="Search by Site ID, Battery, Key or Address..." onkeyup="syncSearch(this.value)">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-primary text-white text-center rounded-pill p-2 fw-bold">
+                Live Sites: <span id="siteCount" class="ms-2">0</span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-warning text-dark text-center rounded-pill p-2 fw-bold">
+                Team Active: <span id="highlightCount" class="ms-2">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4 g-3" id="teamDashboardArea"></div>
+
+    <div class="data-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle border-0">
+                <thead class="sticky-top">
+                    <tr class="text-center">
+                        <th>SL</th><th>Status</th><th>Site ID</th><th>Assigned To</th><th>Work Status</th><th>Address</th><th>Gate</th><th>BTS Key</th><th>Battery</th><th>Roof</th><th>SG</th><th>Nav</th><th>Edit</th>
+                    </tr>
+                </thead>
+                <tbody id="siteTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="adminModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold">🛠️ Data Management Panel</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light p-4">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4"><button class="btn btn-success w-100 rounded-pill fw-bold py-2" onclick="exportCSV()">📤 Download CSV</button></div>
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input type="file" id="csvFileInput" class="form-control rounded-start-pill" accept=".csv">
+                            <button class="btn btn-primary rounded-end-pill px-3" onclick="importCSV()">Import</button>
+                        </div>
+                    </div>
+                    <div class="col-md-4"><button class="btn btn-danger w-100 rounded-pill fw-bold py-2" onclick="deleteAllData()">🗑️ Format System</button></div>
+                </div>
+
+                <div class="card border-0 shadow-sm p-3 mb-4 rounded-4">
+                    <h6 class="fw-bold text-primary mb-3">Add / Update Site Info </h6>
+                    <div class="row g-2">
+                        <div class="col-md-3"><input type="text" id="editSiteID" class="form-control rounded-3" placeholder="Site ID"></div>
+                        <div class="col-md-3">
+                            <input type="text" id="editAssignedTo" class="form-control rounded-3 border-primary" placeholder="👤 Assign To (Team Name)">
+                        </div>
+                        <div class="col-md-3"><input type="number" id="editLAT" step="any" class="form-control rounded-3" placeholder="Lat" onchange="getReverseGeocodeAddress()"></div>
+                        <div class="col-md-3"><input type="number" id="editLONG" step="any" class="form-control rounded-3" placeholder="Long" onchange="getReverseGeocodeAddress()"></div>
+                        
+                        <div class="col-12"><input type="text" id="editAddress" class="form-control rounded-3" placeholder="Complete Address (Auto-Populated)"></div>
+                        <div class="col-md-2 col-6"><input type="text" id="editGate" class="form-control rounded-3" placeholder="Gate"></div>
+                        <div class="col-md-2 col-6"><input type="text" id="editBTS" class="form-control rounded-3" placeholder="BTS Key"></div>
+                        <div class="col-md-2 col-6"><input type="text" id="editBattery" class="form-control rounded-3" placeholder="Battery"></div>
+                        <div class="col-md-3 col-6"><input type="text" id="editRoof" class="form-control rounded-3" placeholder="Roof Type"></div>
+                        <div class="col-md-3 col-12"><input type="text" id="editSG" class="form-control rounded-3" placeholder="SG Details"></div>
+                        <div class="col-12 mt-3 d-flex gap-2">
+                            <button class="btn btn-primary px-4 rounded-pill fw-bold" onclick="addSite()">Save New</button>
+                            <button class="btn btn-warning px-4 rounded-pill fw-bold" onclick="updateSite()">Update Existing</button>
+                            <button class="btn btn-secondary px-4 rounded-pill fw-bold" onclick="clearEditForm()">Clear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold">Site List (Admin View)</h6>
+                <input type="text" class="form-control mb-3 rounded-pill shadow-sm" id="adminSearchInput" placeholder="Quick Search ID in List..." onkeyup="searchAdminTable(this.value)">
+                <div class="table-responsive bg-white rounded-4 border">
+                    <table class="table table-sm table-striped m-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Site ID</th><th>Assigned</th><th>Address</th><th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminSiteTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ✅ Graph এখানে -->
+<div class="data-card">
+    <h5 class="fw-bold mb-3">📊 Team Performance</h5>
+    <canvas id="teamChart"></canvas>
+</div>
+<script>let teamChart;
+
+function renderTeamGraph() {
+    const teams = {};
+
+    sites.forEach(s => {
+        const team = s.AssignedTo || "Unassigned";
+        if(!teams[team]) {
+            teams[team] = { work:0, move:0, run:0, total:0 };
+        }
+
+        const status = s.CurrentStatus || "Normal";
+
+        if(status === "Working") teams[team].work++;
+        else if(status === "Moving") teams[team].move++;
+        else if(status === "Run") teams[team].run++;
+
+        teams[team].total++;
+    });
+
+    // 🔥 sort by total work
+    const sorted = Object.entries(teams).sort((a,b)=>b[1].total - a[1].total);
+
+    const labels = sorted.map(t => t[0]);
+    const workData = sorted.map(t => t[1].work);
+    const moveData = sorted.map(t => t[1].move);
+    const runData = sorted.map(t => t[1].run);
+
+    const ctx = document.getElementById('teamChart').getContext('2d');
+
+    if(teamChart) teamChart.destroy();
+
+    teamChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Working 🔨',
+                    data: workData,
+                    backgroundColor: '#198754'
+                },
+                {
+                    label: 'Moving 🚚',
+                    data: moveData,
+                    backgroundColor: '#0dcaf0'
+                },
+                {
+                    label: 'Run 🏃',
+                    data: runData,
+                    backgroundColor: '#ffc107'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            animation: {
+                duration: 800
+            },
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let sites = JSON.parse(localStorage.getItem('sites')) || [];
+let map, markers, mapMarkers = [], userPosMarker;
+const MASTER_PASS = "rafinoorx";
+
+const blueIcon = new L.Icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', shadowSize: [41, 41] });
+const redIcon = new L.Icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', shadowSize: [41, 41] });
+const yellowIcon = new L.Icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', shadowSize: [41, 41] });
+
+function speak(text) {
+    if ('speechSynthesis' in window) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.rate = 1.0; msg.pitch = 1.0;
+        window.speechSynthesis.speak(msg);
+    }
+}
+
+function initApp() { 
+    initMap(); 
+    renderSiteTable(); 
+    renderAdminTable(); 
+    renderTeamCards(); 
+    setTimeout(() => speak("Welcome to Rafinoor System. Team tracking enabled."), 1000);
+    renderTeamGraph();
+}
+
+function initMap() {
+    if (!map) {
+        const street = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}');
+        const satellite = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}');
+        const traffic = L.tileLayer('https://mt1.google.com/vt/lyrs=h,traffic&x={x}&y={y}&z={z}'); 
+        map = L.map('map', { center: [23.94, 90.72], zoom: 11, layers: [street] });
+        L.control.layers({ "Street Map": street, "Satellite View": satellite, "Live Traffic": traffic }, null, {position: 'topright'}).addTo(map);
+    }
+    if (markers) markers.clearLayers(); else markers = L.markerClusterGroup();
+    mapMarkers = [];
+    sites.forEach((site) => {
+        const isH = site.highlight || false;
+        const navUrl = `https://www.google.com/maps?q=${site.LAT},${site.LONG}`;
+        
+        const popupContent = `
+            <div style="min-width:180px">
+               
+                <h6 class="text-primary fw-bold mb-2">ID: ${site.SiteID} ${isH ? '🚨' : ''}</h6>
+                <div class="mb-2 small d-flex justify-content-between align-items-center">
+    <div><b>Team:</b> ${site.AssignedTo || 'Unassigned'}</div>
+    <span class="btn-mini text-warning" 
+          onclick="prepareEdit('${site.SiteID}')" 
+          title="Edit Site">📝</span>
+</div>
+                <div class="mb-2 small"><b>Status:</b> ${site.CurrentStatus || 'Normal'}</div>
+                <table class="popup-table">
+                    <tr><td><b>Addr:</b></td><td>${site.Address || '-'}</td></tr>
+                    <tr><td><b>Gate:</b></td><td>${site.Gate || '-'}</td></tr>
+                    <tr><td><b>Key:</b></td><td>${site.BTS || '-'}</td></tr>
+                    <tr><td><b>Batt:</b></td><td>${site.Battery || '-'}</td></tr>
+                </table>
+                
+                
+                <button class="btn-highlight-action" onclick="toggleHighlight('${site.SiteID}')">
+                    ${isH ? '✅ Clear Task' : '🚨 Highlight Site'}
+                </button>
+                <a href="${navUrl}" target="_blank" class="btn-nav">🚀 Navigate to Site</a>
+            </div>`;
+        const m = L.marker([site.LAT, site.LONG], { icon: isH ? yellowIcon : blueIcon })
+                  .bindPopup(popupContent)
+                  .bindTooltip(`${site.SiteID} (${site.AssignedTo || ''})`, { permanent: true, className: isH ? 'site-label site-label-active' : 'site-label' });
+        markers.addLayer(m);
+        mapMarkers.push({ marker: m, site: site });
+    });
+    map.addLayer(markers);
+    updateCount();
+}
+
+function toggleHighlight(id) {
+    const site = sites.find(s => s.SiteID === id);
+
+    if(site){
+        site.highlight = !site.highlight;
+
+        // 🔊 Voice Alert
+        if(site.highlight){
+            speak(` ${site.SiteID} site in`);
+        } else {
+            speak(`Task cleared for ${site.SiteID}`);
+        }
+
+        save(); // auto refresh
+    }
+    const mData = mapMarkers.find(m => m.site.SiteID === id);
+if(mData && site.highlight){
+    map.setView(mData.marker.getLatLng(), 17);
+    mData.marker.openPopup();
+}
+}
+
+function updateNote(id, field, value){
+    const site = sites.find(s => s.SiteID === id);
+    if(site){
+        site[field] = value;
+        save();
+    }
+}
+
+
+function updateSiteStatus(id, newStatus) {
+    const site = sites.find(s => s.SiteID === id);
+    if(site) {
+        if(newStatus === 'Custom') {
+            const customText = prompt("Enter Custom Status (e.g., Waiting for Key):");
+            if(customText) {
+                site.CurrentStatus = "Custom: " + customText;
+            } else {
+                return;
+            }
+        } else {
+            site.CurrentStatus = newStatus;
+        }
+        save();
+    }
+}
+
+function renameTeam(oldName) {
+    const newName = prompt("Enter new name for Team: " + oldName, oldName);
+    if(newName && newName !== oldName) {
+        let count = 0;
+        sites.forEach(s => {
+            if(s.AssignedTo === oldName) {
+                s.AssignedTo = newName;
+                count++;
+            }
+        });
+        save();
+        alert(`Updated ${count} sites to new team: ${newName}`);
+    }
+}
+
+function locateSiteOnMap(id) {
+    const mData = mapMarkers.find(m => m.site.SiteID === id);
+    if (mData) {
+        map.setView(mData.marker.getLatLng(), 18);
+        mData.marker.openPopup();
+        window.scrollTo({ top: document.getElementById("map-container").offsetTop - 100, behavior: 'smooth' });
+    } else {
+        alert("Site location not found on map.");
+    }
+}
+
+function startVoiceRecognition() {
+    const btn = document.getElementById('voiceBtn');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { alert("Not supported."); return; }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US'; recognition.start();
+    btn.classList.add('voice-active');
+    recognition.onresult = (e) => {
+        let t = e.results[0][0].transcript.replace(/\./g, '').trim();
+        if(t.toLowerCase().includes("locate me")) locateUser(); 
+        else syncSearch(t);
+    };
+    recognition.onspeechend = () => { recognition.stop(); btn.classList.remove('voice-active'); };
+}
+
+function locateUser() {
+    map.locate({setView: true, maxZoom: 16});
+    map.on('locationfound', (e) => {
+        if (userPosMarker) map.removeLayer(userPosMarker);
+        userPosMarker = L.circleMarker(e.latlng, { radius: 10, color: 'white', fillColor: '#28a745', fillOpacity: 0.9, weight: 3 }).addTo(map).bindPopup("You are here").openPopup();
+        document.getElementById('editLAT').value = e.latlng.lat.toFixed(6);
+        document.getElementById('editLONG').value = e.latlng.lng.toFixed(6);
+        getReverseGeocodeAddress();
+    });
+}
+
+function syncSearch(val) {
+    const q = val.toUpperCase();
+    document.getElementById('mapSearchInput').value = val;
+    document.getElementById('mainSearchInput').value = val;
+    let firstResult = null;
+    sites.forEach((site, i) => {
+        const match = site.SiteID.toUpperCase().includes(q) || (site.Address || '').toUpperCase().includes(q) || (site.AssignedTo || '').toUpperCase().includes(q);
+        const row = document.querySelectorAll('#siteTable tr')[i];
+        if (row) row.style.display = match ? "" : "none";
+        const mData = mapMarkers.find(m => m.site.SiteID === site.SiteID);
+        if (mData) {
+            if (q !== "" && match) { mData.marker.setIcon(redIcon); if (!firstResult) firstResult = mData; } 
+            else { mData.marker.setIcon(site.highlight ? yellowIcon : blueIcon); }
+        }
+    });
+    if (firstResult && q !== "") { map.setView(firstResult.marker.getLatLng(), 16); firstResult.marker.openPopup(); }
+}
+
+function getReverseGeocodeAddress() {
+    const lat = document.getElementById('editLAT').value;
+    const lng = document.getElementById('editLONG').value;
+    if(!lat || !lng) return;
+    document.getElementById('editAddress').value = "Fetching...";
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+        .then(r => r.json()).then(d => {
+            const addr = d.display_name || "Unknown";
+            document.getElementById('editAddress').value = addr;
+        });
+}
+
+function updateCount() {
+    document.getElementById('siteCount').innerText = sites.length;
+    document.getElementById('highlightCount').innerText = sites.filter(s => s.highlight).length;
+}
+
+// Updated Team Card Render Function with Edit/Delete Buttons
+function renderTeamCards() {
+    const area = document.getElementById('teamDashboardArea');
+    area.innerHTML = '';
+    
+    const teams = {};
+    sites.forEach(s => {
+        const teamName = s.AssignedTo ? s.AssignedTo.trim() : "";
+        if(teamName) {
+            if(!teams[teamName]) teams[teamName] = [];
+            teams[teamName].push(s);
+        }
+    });
+
+    if(Object.keys(teams).length === 0) {
+        area.innerHTML = '<div class="col-12 text-center text-muted small py-3">No teams assigned yet. Use Admin Panel to assign sites.</div>';
+        return;
+    }
+
+    Object.keys(teams).sort().forEach(team => {
+        const teamSites = teams[team];
+        let workingCount = 0;
+        let movingCount = 0;
+        let runCount = 0;
+
+        let listHtml = '';
+        teamSites.forEach((s, idx) => {
+            const currentStatus = s.CurrentStatus || 'Normal';
+            const isHigh = s.highlight;
+            const isCustom = currentStatus.startsWith('Custom');
+
+            if (currentStatus === 'Working' || isCustom) workingCount++;
+            if (currentStatus === 'Moving') movingCount++;
+            if (currentStatus === 'Run') runCount++;
+            
+            listHtml += `<li>
+                <div class="card-row-top">
+                    <div>
+                        <span class="site-link" onclick="locateSiteOnMap('${s.SiteID}')">
+                            ${idx + 1}. ${s.SiteID} 📍
+                        </span>
+                    </div>
+                    <div class="action-btns-mini">
+                        <span class="btn-mini text-warning" onclick="prepareEdit('${s.SiteID}')" title="Edit Site">📝</span>
+                        <span class="btn-mini text-danger" onclick="deleteSite('${s.SiteID}')" title="Delete Site">🗑️</span>
+                        <button class="highlight-btn-card ${isHigh ? 'h-on' : 'h-off'}" onclick="toggleHighlight('${s.SiteID}')">
+                            ${isHigh ? '🚨' : '⚪'}
+                        </button>
+                    </div>
+                </div>
+                <div class="card-row-bottom">
+                    <div style="display:flex; gap:5px; margin-top:4px;">
+<input type="text" placeholder="Note1"
+value="${s.Note1 || ''}"
+style="width:90px;font-size:10px"
+onchange="updateNote('${s.SiteID}', 'Note1', this.value)">
+
+<input type="text" placeholder="Note2"
+value="${s.Note2 || ''}"
+style="width:90px;font-size:10px"
+onchange="updateNote('${s.SiteID}', 'Note2', this.value)">
+</div>
+                    <div class="d-flex flex-column align-items-end">
+                        <select class="status-select" onchange="updateSiteStatus('${s.SiteID}', this.value)">
+                            <option value="Normal" ${currentStatus === 'Normal' ? 'selected' : ''}>Normal</option>
+                            <option value="Working" ${currentStatus === 'Working' ? 'selected' : ''}>Working 🔨</option>
+                            <option value="Moving" ${currentStatus === 'Moving' ? 'selected' : ''}>Moving 🚚</option>
+                            <option value="Run" ${currentStatus === 'Run' ? 'selected' : ''}>Run 🏃</option>
+                            <option value="Custom" ${isCustom ? 'selected' : ''}>Custom ✍️</option>
+                        </select>
+                        ${isCustom ? `<span class="custom-status-text">${currentStatus.substring(8)}</span>` : ''}
+                    </div>
+                </div>
+            </li>`;
+        });
+
+        const cardHtml = `
+        <div class="col-md-4 col-sm-6">
+            <div class="team-card">
+                <div class="team-header">
+                    <div>
+                        <span>👤 ${team}</span>
+                        <span class="team-rename-btn" onclick="renameTeam('${team}')">✏️</span>
+                    </div>
+                    <span class="badge bg-primary">${teamSites.length} Sites</span>
+                </div>
+                <div class="team-stats-bar">
+                    <span class="stat-item"><span class="stat-badge bg-work">${workingCount}</span> Work</span>
+                    <span class="stat-item"><span class="stat-badge bg-move">${movingCount}</span> Move</span>
+                    <span class="stat-item"><span class="stat-badge bg-run">${runCount}</span> Run</span>
+                </div>
+                <ul class="team-list">
+                    ${listHtml}
+                </ul>
+            </div>
+        </div>`;
+        area.innerHTML += cardHtml;
+    });
+}
+
+function renderSiteTable() {
+    const tbody = document.getElementById('siteTable');
+    tbody.innerHTML = '';
+    sites.forEach((site, i) => {
+        const isH = site.highlight || false;
+        const navUrl = `https://www.google.com/maps?q=${site.LAT},${site.LONG}`;
+        const tr = document.createElement('tr');
+        tr.className = `text-center ${isH ? 'highlighted-row' : ''}`;
+        tr.innerHTML = `
+            <td>${i+1}</td>
+            <td><button class="highlight-toggle-btn" onclick="toggleHighlight('${site.SiteID}')">${isH ? '🚨' : '⚪'}</button></td>
+            <td class="fw-bold">${site.SiteID}</td>
+            <td class="text-primary fw-bold">${site.AssignedTo || '-'}</td>
+            <td class="small fw-bold text-secondary">${site.CurrentStatus || 'Normal'}</td>
+            <td class="small text-start">${site.Address || '-'}</td>
+            <td>${site.Gate || '-'}</td>
+            <td>${site.BTS || '-'}</td>
+            <td>${site.Battery || '-'}</td>
+            <td>${site.Roof || '-'}</td>
+            <td>${site.SG || '-'}</td>
+            <td><a href="${navUrl}" target="_blank">🔗</a></td>
+            <td class="edit-icon" onclick="prepareEdit('${site.SiteID}')">📝</td>`;
+        tr.onclick = (e) => {
+            if(e.target.closest('.highlight-toggle-btn') || e.target.classList.contains('edit-icon') || e.target.tagName === 'A') return;
+            locateSiteOnMap(site.SiteID);
+        };
+        tbody.appendChild(tr);
+    });
+}
+
+function renderAdminTable() {
+    const tbody = document.getElementById('adminSiteTable');
+    tbody.innerHTML = '';
+    sites.forEach((site) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${site.SiteID}</td>
+            <td class="text-primary">${site.AssignedTo || '-'}</td>
+            <td class="small">${site.Address || '-'}</td>
+            <td class="text-nowrap"><span class="edit-icon me-2" onclick="prepareEdit('${site.SiteID}')">📝</span><span class="delete-icon" onclick="deleteSite('${site.SiteID}')">🗑️</span></td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function searchAdminTable(val) {
+    const q = val.toUpperCase();
+    document.querySelectorAll('#adminSiteTable tr').forEach(row => { row.style.display = row.innerText.toUpperCase().includes(q) ? "" : "none"; });
+}
+
+function prepareEdit(id) {
+    const s = sites.find(s => s.SiteID === id);
+    if(s) {
+        document.getElementById('editSiteID').value = s.SiteID;
+        document.getElementById('editAssignedTo').value = s.AssignedTo || ""; 
+        document.getElementById('editLAT').value = s.LAT;
+        document.getElementById('editLONG').value = s.LONG;
+        document.getElementById('editAddress').value = s.Address;
+        document.getElementById('editGate').value = s.Gate;
+        document.getElementById('editBTS').value = s.BTS;
+        document.getElementById('editBattery').value = s.Battery;
+        document.getElementById('editRoof').value = s.Roof;
+        document.getElementById('editSG').value = s.SG;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('adminModal')).show();
+    }
+}
+
+function deleteSite(id) {
+    if(confirm("Are you sure you want to delete Site ID: " + id + "?")) { 
+        sites = sites.filter(s => s.SiteID !== id); 
+        save(); 
+    }
+}
+
+function addSite() {
+    const s = getEditInputs();
+    if (!s.SiteID || sites.some(x => x.SiteID === s.SiteID)) return alert("Invalid or Duplicate Site ID");
+    s.highlight = false; s.CurrentStatus = "Normal"; sites.push(s); save(); clearEditForm();
+}
+
+function updateSite() {
+    const s = getEditInputs();
+    const idx = sites.findIndex(x => x.SiteID === s.SiteID);
+    if(idx !== -1) { 
+        s.highlight = sites[idx].highlight;
+        s.CurrentStatus = sites[idx].CurrentStatus;
+        sites[idx] = {...sites[idx], ...s}; 
+        save(); 
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('adminModal')).hide();
+    }
+}
+
+function getEditInputs() {
+    return {
+        SiteID: document.getElementById('editSiteID').value.trim(),
+        AssignedTo: document.getElementById('editAssignedTo').value.trim(), 
+        LAT: parseFloat(document.getElementById('editLAT').value) || 0,
+        LONG: parseFloat(document.getElementById('editLONG').value) || 0,
+        Address: document.getElementById('editAddress').value.trim(),
+        Gate: document.getElementById('editGate').value.trim(),
+        BTS: document.getElementById('editBTS').value.trim(),
+        Battery: document.getElementById('editBattery').value.trim(),
+        Roof: document.getElementById('editRoof').value.trim(),
+        SG: document.getElementById('editSG').value.trim()
+    };
+}
+
+function clearEditForm() { document.querySelectorAll('#adminModal input').forEach(i => i.value = ""); }
+
+function save() {
+    localStorage.setItem('sites', JSON.stringify(sites));
+    initMap();
+    renderSiteTable();
+    renderAdminTable();
+    renderTeamCards();
+    renderTeamGraph(); // ✅ graph update
+}
+
+function exportCSV() {
+    if(sites.length === 0){ alert("No site data to export."); return; }
+
+    const head = "SiteID,LAT,LONG,Address,Gate,BTS,Battery,Roof,SG,AssignedTo,CurrentStatus,Highlight,Note1,Note2\n";
+    const body = sites.map(s => {
+        return `"${s.SiteID}",${s.LAT},${s.LONG},"${s.Address}","${s.Gate}","${s.BTS}","${s.Battery}","${s.Roof}","${s.SG}","${s.AssignedTo || ''}","${s.CurrentStatus || 'Normal'}",${s.highlight ? 1 : 0},"${s.Note1 || ''}","${s.Note2 || ''}"`;
+    }).join("\n");
+
+    const csvContent = head + body;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Rafinoor_Sites_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function importCSV() {
+    const file = document.getElementById('csvFileInput').files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        const lines = e.target.result.split("\n").slice(1);
+
+        lines.forEach(l => {
+            const c = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+
+            if(c.length > 5) {
+                const id = c[0].replace(/"/g,'');
+
+                // ✅ duplicate check
+                if(!sites.some(s => s.SiteID === id)) {
+                    sites.push({ 
+                        SiteID: id,
+                        LAT: parseFloat(c[1]), 
+                        LONG: parseFloat(c[2]), 
+                        Address: c[3]?.replace(/"/g,''), 
+                        Gate: c[4]?.replace(/"/g,''), 
+                        BTS: c[5]?.replace(/"/g,''), 
+                        Battery: c[6]?.replace(/"/g,''), 
+                        Roof: c[7]?.replace(/"/g,''), 
+                        SG: c[8]?.replace(/"/g,''), 
+                        AssignedTo: c[9]?.replace(/"/g,'') || '',
+                        CurrentStatus: c[10]?.replace(/"/g,'') || 'Normal',
+                        highlight: c[11] === 'true',
+                        Note1: c[12]?.replace(/"/g,'') || '',
+                        Note2: c[13]?.replace(/"/g,'') || '',
+                    });
+                }
+            }
+        });
+
+        // ✅ এখানে save হবে (correct place)
+        save();
+
+        alert("✅ CSV Imported Successfully");
+    };
+
+    reader.readAsText(file);
+}
+
+function deleteAllData() {
+    if(prompt("Password:") === MASTER_PASS) { sites = []; save(); }
+}
+
+function goFullScreen() {
+    const el = document.getElementById('map-container');
+    if (el.requestFullscreen) el.requestFullscreen();
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+</body>
+</html>
